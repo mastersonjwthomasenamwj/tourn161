@@ -65,7 +65,7 @@ class CustomEvalSaveCallback(TrainerCallback):
             # do not allow the pod to be stopped by any reason 
                 # first check if there is at least one checkpoint or not 
             print(f"Evaluating the model at step: {state.global_step} the reason: {when_to_eval['reason']}", flush=True)
-            control.should_evaluate = True
+            control.should_evaluate = False
             control.should_save = True
             if when_to_eval["reason"] == "end_time":
                 control.should_training_stop = True
@@ -74,8 +74,6 @@ class CustomEvalSaveCallback(TrainerCallback):
                     control.should_evaluate = False
                     self.save_only = False
             elif when_to_eval["reason"] == "periodic":
-                # print("log_history:", state.log_history)
-
                 log_path = os.path.join(self.output_dir, "log_history.json")
 
                 # Collect all logged losses
@@ -84,8 +82,10 @@ class CustomEvalSaveCallback(TrainerCallback):
                 ]
 
                 if losses:
+                    print(f"\nlog_history: {state.log_history}", flush=True)
+
                     avg_loss = sum(losses) / len(losses)
-                    print("\nAverage loss:", avg_loss)
+                    print(f"\nAverage loss: {avg_loss}", flush=True)
 
                     # control.should_evaluate = False
                     # control.should_save = True
@@ -101,14 +101,18 @@ class CustomEvalSaveCallback(TrainerCallback):
 
                             if last_losses:
                                 last_loss = sum(last_losses) / len(last_losses)
-                                print("Last loss:", last_loss)
+                                print(f"Last loss: {last_loss}", flush=True)
 
                                 # control.should_evaluate = False
                                 # control.should_save = True
                                 # self.save_only = True
 
-                                if last_loss >= avg_loss:
-                                    print(f"log_history last: {log_path}")
+                                if last_loss*1.0 >= avg_loss:
+                                    # print(f"log_history last: {log_path}", flush=True)
+
+                                    for g in kwargs["optimizer"].param_groups:
+                                        print(f"lr: {g['lr']}", flush=True)
+                                        g["lr"] *= 1.03
 
                                     with open(log_path, "w") as f:
                                         json.dump(state.log_history, f, ensure_ascii=False)
@@ -118,17 +122,23 @@ class CustomEvalSaveCallback(TrainerCallback):
                                     self.save_only = True
 
                                 else:
+                                    print(f"No saved", flush=True)
+
+                                    for g in kwargs["optimizer"].param_groups:
+                                        print(f"lr: {g['lr']}", flush=True)
+                                        g["lr"] *= 0.99
+
                                     control.should_evaluate = False
                                     control.should_save = False
                                     self.save_only = False
 
                             else:
-                                print("No losses found in log_history")
+                                print("No losses found in log_history", flush=True)
 
                     else:
-                        print("New loss:", avg_loss)
+                        print(f"New loss: {avg_loss}", flush=True)
 
-                        print(f"log_history new: {log_path}")
+                        # print(f"log_history new: {log_path}", flush=True)
 
                         with open(log_path, "w") as f:
                             json.dump(state.log_history, f, ensure_ascii=False)
@@ -138,7 +148,7 @@ class CustomEvalSaveCallback(TrainerCallback):
                         self.save_only = True
 
                 else:
-                    print("No losses found in log_history")
+                    print("No losses found in log_history", flush=True)
 
 
         return control
@@ -286,7 +296,7 @@ def set_generation_config(model_name, model):
         if model_name in ERROR_GENERATION_CONFIG_MODELS:
             model.generation_config = GenerationConfig(temperature=None, top_p=None)
     except:
-        print(f"Error setting generation config for model {model_name}")
+        print(f"Error setting generation config for model {model_name}", flush=True)
         pass
 
 
@@ -295,7 +305,7 @@ def resize_if_needed(model_name, model, token_nums):
         if model_name in MIS_MATCH_VOCAB_SIZE_MODELS:
             model.resize_token_embeddings(token_nums)
     except:
-        print(f"Error resizing token embeddings for model {model_name}")
+        print(f"Error resizing token embeddings for model {model_name}", flush=True)
         pass
 
 

@@ -289,7 +289,7 @@ def get_training_json(train_info: dict) -> dict:
     train_request["save_before_remaining_time"] = 10
     train_request["min_steps"] = 100
     train_request["adjust_batch_size"] = False
-    train_request["periodic_save_steps"] = 10
+    train_request["periodic_save_steps"] = 20
     
     return {
         "train_request": train_request,

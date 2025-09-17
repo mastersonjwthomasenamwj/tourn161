@@ -75,14 +75,15 @@ class CustomEvalSaveCallback(TrainerCallback):
                     self.save_only = False
             elif when_to_eval["reason"] == "periodic":
                 log_path = os.path.join(self.output_dir, "log_history.json")
+                log_avg = state.log_history[-5:]
 
                 # Collect all logged losses
                 losses = [
-                    log["loss"] for log in state.log_history if "loss" in log
+                    log["loss"] for log in log_avg if "loss" in log
                 ]
 
                 if losses:
-                    print(f"\nlog_history: {state.log_history}", flush=True)
+                    print(f"\nlog_history: {log_avg}", flush=True)
 
                     avg_loss = sum(losses) / len(losses)
                     print(f"\nAverage loss: {avg_loss}", flush=True)
@@ -112,10 +113,14 @@ class CustomEvalSaveCallback(TrainerCallback):
 
                                     for g in kwargs["optimizer"].param_groups:
                                         print(f"lr: {g['lr']}", flush=True)
-                                        g["lr"] *= 1.03
+                                        if g["lr"] < 0.0001:
+                                            g["lr"] *= 1.03
+                                        else:
+                                            g["lr"] *= 0.5
 
                                     with open(log_path, "w") as f:
-                                        json.dump(state.log_history, f, ensure_ascii=False)
+                                        log_dummy = state.log_history[-5:]
+                                        json.dump(log_dummy, f, ensure_ascii=False)
 
                                     control.should_evaluate = False
                                     control.should_save = True
@@ -126,7 +131,10 @@ class CustomEvalSaveCallback(TrainerCallback):
 
                                     for g in kwargs["optimizer"].param_groups:
                                         print(f"lr: {g['lr']}", flush=True)
-                                        g["lr"] *= 0.99
+                                        if g["lr"] > 0.0000005:
+                                            g["lr"] *= 0.99
+                                        else:
+                                            g["lr"] *= 1.5
 
                                     control.should_evaluate = False
                                     control.should_save = False
@@ -141,7 +149,8 @@ class CustomEvalSaveCallback(TrainerCallback):
                         # print(f"log_history new: {log_path}", flush=True)
 
                         with open(log_path, "w") as f:
-                            json.dump(state.log_history, f, ensure_ascii=False)
+                            log_dummy = state.log_history[-5:]
+                            json.dump(log_dummy, f, ensure_ascii=False)
 
                         control.should_evaluate = False
                         control.should_save = True
